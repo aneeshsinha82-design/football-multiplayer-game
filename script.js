@@ -14,17 +14,17 @@ const enemyOf=c=>c==='w'?'b':'w';
 
 function pseudoMoves(r,c,attack=false){
  const p=state[r][c];if(!p)return[];const side=color(p),t=p.toLowerCase(),out=[];
- const add=(R,C)=>{if(inb(R,C)&&(attack||color(state[R][C])!==side))out.push([R,C])};
- const slide=dirs=>{for(const[dr,dc]of dirs){let R=r+dr,C=c+dc;while(inb(R,C)){if(!state[R][C])out.push([R,C]);else{if(attack||color(state[R][C])!==side)out.push([R,C]);break}R+=dr;C+=dc}}};
- if(t==='p'){let d=side==='w'?-1:1,start=side==='w'?6:1;if(attack){for(const dc of[-1,1])if(inb(r+d,c+dc))out.push([r+d,c+dc]);return out}if(inb(r+d,c)&&!state[r+d][c]){out.push([r+d,c]);if(r===start&&!state[r+2*d][c])out.push([r+2*d,c])}for(const dc of[-1,1]){let R=r+d,C=c+dc;if(inb(R,C)&&color(state[R][C])===enemyOf(side))out.push([R,C]);if(enPassant&&enPassant[0]===R&&enPassant[1]===C)out.push([R,C])}}
+ const add=(R,C)=>{if(!inb(R,C))return;const q=state[R][C];if(q&&q.toLowerCase()==='k')return;if(attack||color(q)!==side)out.push([R,C])};
+ const slide=dirs=>{for(const[dr,dc]of dirs){let R=r+dr,C=c+dc;while(inb(R,C)){if(!state[R][C])out.push([R,C]);else{if(state[R][C].toLowerCase()!=='k'&&(attack||color(state[R][C])!==side))out.push([R,C]);break}R+=dr;C+=dc}}};
+ if(t==='p'){let d=side==='w'?-1:1,start=side==='w'?6:1;if(attack){for(const dc of[-1,1])if(inb(r+d,c+dc))out.push([r+d,c+dc]);return out}if(inb(r+d,c)&&!state[r+d][c]){out.push([r+d,c]);if(r===start&&!state[r+2*d][c])out.push([r+2*d,c])}for(const dc of[-1,1]){let R=r+d,C=c+dc;if(inb(R,C)&&state[R][C].toLowerCase()!=='k'&&color(state[R][C])===enemyOf(side))out.push([R,C]);if(enPassant&&enPassant[0]===R&&enPassant[1]===C)out.push([R,C])}}
  if(t==='n')[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]].forEach(([a,b])=>add(r+a,c+b));
  if(t==='b')slide([[1,1],[1,-1],[-1,1],[-1,-1]]);
  if(t==='r')slide([[1,0],[-1,0],[0,1],[0,-1]]);
  if(t==='q')slide([[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]]);
  if(t==='k'){for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)if(a||b)add(r+a,c+b);
    if(!attack&&!isInCheck(side)){let row=side==='w'?7:0;
-    if(c===4&&castling[side+'K']&&!state[row][5]&&!state[row][6]&&!isSquareAttacked(row,5,enemyOf(side))&&!isSquareAttacked(row,6,enemyOf(side)))out.push([row,6]);
-    if(c===4&&castling[side+'Q']&&!state[row][1]&&!state[row][2]&&!state[row][3]&&!isSquareAttacked(row,3,enemyOf(side))&&!isSquareAttacked(row,2,enemyOf(side)))out.push([row,2]);
+    if(c===4&&castling[side+'K']&&state[row][7]===(side==='w'?'R':'r')&&!state[row][5]&&!state[row][6]&&!isSquareAttacked(row,5,enemyOf(side))&&!isSquareAttacked(row,6,enemyOf(side)))out.push([row,6]);
+    if(c===4&&castling[side+'Q']&&state[row][0]===(side==='w'?'R':'r')&&!state[row][1]&&!state[row][2]&&!state[row][3]&&!isSquareAttacked(row,3,enemyOf(side))&&!isSquareAttacked(row,2,enemyOf(side)))out.push([row,2]);
    }}
  return out;
 }
@@ -44,7 +44,7 @@ function makeMove(fr,fc,tr,tc,simulate=false){
 }
 function legalMoves(r,c){const side=color(state[r][c]);if(side!==turn)return[];return pseudoMoves(r,c).filter(([tr,tc])=>{const save=clone();makeMove(r,c,tr,tc,true);const bad=isInCheck(side);state=save.state;turn=save.turn;castling=save.castling;enPassant=save.enPassant;lastMove=save.lastMove;return !bad})}
 function allLegal(side){const old=turn;turn=side;let a=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(color(state[r][c])===side)a.push(...legalMoves(r,c));turn=old;return a}
-function finishStatus(){const check=isInCheck(turn),available=allLegal(turn);if(!available.length){gameOver=true;statusEl.textContent=check?(turn==='w'?'Checkmate — Black wins!':'Checkmate — White wins!'):'Draw — Stalemate';return}statusEl.textContent=(turn==='w'?'White':'Black')+(check?' is in CHECK!':' to move')}
+function finishStatus(){const check=isInCheck(turn),available=allLegal(turn);if(!available.length){gameOver=true;statusEl.textContent=check?(turn==='w'?'Checkmate — Black wins!':'Checkmate — White wins!'):'Draw — Stalemate';return}statusEl.textContent=check?(turn==='w'?'White is in CHECK — you must escape the check!':'Black is in CHECK — you must escape the check!'):(turn==='w'?'White to move':'Black to move')}
 function render(){board.innerHTML='';for(let r=0;r<8;r++)for(let c=0;c<8;c++){const d=document.createElement('div'),p=state[r][c];d.className='sq '+((r+c)%2?'dark':'light');
  if(selected&&selected[0]===r&&selected[1]===c)d.classList.add('selected');if(lastMove&&((lastMove.fr===r&&lastMove.fc===c)||(lastMove.tr===r&&lastMove.tc===c)))d.classList.add('last');
  if(moves.some(m=>m[0]===r&&m[1]===c))d.classList.add(p?'capture':'legal');
